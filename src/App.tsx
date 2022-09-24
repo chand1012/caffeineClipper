@@ -45,6 +45,7 @@ function App() {
   // runs on first load
   useAsyncEffect(async () => {
     await register("CommandOrControl+Shift+S", handleCommand);
+    // this doesn't work
     setSettings(await loadSettings());
     const isNotify = await handleNotificationPermissions();
     if (!isNotify) {
