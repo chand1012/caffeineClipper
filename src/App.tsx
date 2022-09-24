@@ -46,7 +46,8 @@ function App() {
   useAsyncEffect(async () => {
     await register("CommandOrControl+Shift+S", handleCommand);
     // this doesn't work
-    setSettings(await loadSettings());
+    const initialSettings = await loadSettings();
+    setSettings(initialSettings as Settings);
     const isNotify = await handleNotificationPermissions();
     if (!isNotify) {
       setUserMsg(
@@ -77,7 +78,7 @@ function App() {
           <button onClick={onSaveSettings}>Save</button>
         </div>
       </div>
-      <div className="row">
+      <div style={{ marginTop: "0.95em" }} className="row">
         <div>
           <button onClick={authenticate}>Authenticate</button>
         </div>
