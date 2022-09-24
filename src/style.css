@@ -25,6 +25,7 @@
 
 .logo {
   height: 6em;
+  width: 6em;
   padding: 1.5em;
   will-change: filter;
   transition: 0.75s;
@@ -73,6 +74,10 @@ button {
 
 button:hover {
   border-color: #396cd8;
+}
+
+button:active {
+  background-color: #0f0f0f;
 }
 
 input,

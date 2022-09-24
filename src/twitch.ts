@@ -1,5 +1,11 @@
 import type { Settings } from "./types";
 
+export const authURL = (settings: Settings) => {
+  const { clientId } = settings;
+  const url = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=http://localhost&scope=clips%3Aedit&response_type=token`;
+  return url;
+};
+
 export const clip = async (
   broadcastID: string | number,
   settings: Settings
