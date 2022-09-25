@@ -5,6 +5,9 @@ This template should help get you started developing with Tauri, React and Types
 ## Recommended IDE Setup
 
 * [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+# DONE
+* This can use a given bearer token and client ID to create clips from the given channel!
+* Saves settings locally.
 # TO DO
 * Find a way to get user bearer from client ID and secret. Need `clips.edit` scope.
 * Run the clip function on hotkey with some form of cooldown (like 10 seconds).

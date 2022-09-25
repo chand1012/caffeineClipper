@@ -1,5 +1,4 @@
 import {
-  exists,
   readTextFile,
   writeTextFile,
   BaseDirectory,

@@ -1,12 +1,17 @@
 import type { Settings } from "./types";
 
+export type Clip = {
+  id: string;
+  edit_url: string;
+};
+
 export const authURL = (settings: Settings) => {
   const { clientId } = settings;
   const url = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=http://localhost&scope=clips%3Aedit&response_type=token`;
   return url;
 };
 
-export const clip = async (
+export const createClip = async (
   broadcastID: string | number,
   settings: Settings
 ) => {
@@ -16,10 +21,10 @@ export const clip = async (
     "Client-ID": clientId,
     Authorization: `Bearer ${bearerToken}`,
   };
-  return fetch(url, { headers }).then((res) => res.json());
+  return fetch(url, { headers, method: "POST" }).then((res) => res.json());
 };
 
-export const get_broadcast_id = async (settings: Settings) => {
+export const getBroadcastID = async (settings: Settings) => {
   const { clientId, bearerToken, channelName } = settings;
   const url = `https://api.twitch.tv/helix/users?login=${channelName}`;
   const headers = {
@@ -28,5 +33,29 @@ export const get_broadcast_id = async (settings: Settings) => {
   };
   const res = await fetch(url, { headers });
   const res_data = await res.json();
-  return res_data.data[0].id;
+  return res_data?.data?.[0]?.id;
+};
+
+export const isUserLive = async (settings: Settings) => {
+  const { clientId, bearerToken, channelName } = settings;
+  const url = `https://api.twitch.tv/helix/streams?user_login=${channelName}`;
+  const headers = {
+    "Client-ID": clientId,
+    Authorization: `Bearer ${bearerToken}`,
+  };
+  const res = await fetch(url, { headers });
+  const res_data = await res.json();
+  return res_data?.data?.length > 0;
+};
+
+export const getClipData = async (clipID: string, settings: Settings) => {
+  const { clientId, bearerToken } = settings;
+  const url = `https://api.twitch.tv/helix/clips?id=${clipID}`;
+  const headers = {
+    "Client-ID": clientId,
+    Authorization: `Bearer ${bearerToken}`,
+  };
+  const res = await fetch(url, { headers });
+  const res_data = await res.json();
+  return res_data?.data?.[0];
 };
