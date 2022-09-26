@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Settings, loadSettings, saveSettings } from "./utils/settings";
 import "./App.css";
-import { register } from "@tauri-apps/api/globalShortcut";
+import { register, unregister } from "@tauri-apps/api/globalShortcut";
 import useAsyncEffect from "use-async-effect";
 import { handleNotificationPermissions } from "./utils/notifications";
 import { sendNotification } from "@tauri-apps/api/notification";
@@ -11,8 +11,9 @@ import {
   createClip,
   getBroadcastID,
   isUserLive,
-} from "./twitch";
+} from "./utils/twitch";
 import { writeText } from "@tauri-apps/api/clipboard";
+import { loadHistory, saveHistory, ClipHistory } from "./utils/history";
 
 function App() {
   const [settings, setSettings] = useState<Settings>({} as Settings);
@@ -21,6 +22,8 @@ function App() {
   const [clips, setClips] = useState<Clip[]>([]);
   const [loadingClip, setLoadingClip] = useState<boolean>(false);
   const [loadingID, setLoadingID] = useState<boolean>(false);
+  const [cooldown, setCooldown] = useState<boolean>(false);
+  const [shortcutActive, setShortcutActive] = useState<boolean>(false);
 
   async function authenticate() {
     const url = authURL(settings);
@@ -44,15 +47,16 @@ function App() {
   }
 
   async function handleCopyID() {
-    await writeText(settings.broadcast_id);
+    await writeText(settings.broadcastID);
     sendNotification("Copied broadcast ID to clipboard");
   }
 
   async function handleUpdateID() {
     setLoadingID(true);
-    const broadcast_id = await getBroadcastID(settings);
-    if (broadcast_id) {
-      setSettings({ ...settings, broadcast_id });
+    setCooldown(false);
+    const broadcastID = await getBroadcastID(settings);
+    if (broadcastID) {
+      setSettings({ ...settings, broadcastID });
     }
     await saveSettings(settings);
     setIsLive(await isUserLive(settings));
@@ -60,26 +64,32 @@ function App() {
   }
 
   async function handleCreateClip() {
-    if (!settings.broadcast_id || isLive === null) {
-      await handleUpdateID();
+    if (cooldown) {
+      return;
     }
     setLoadingClip(true);
-    if (!settings.broadcast_id) {
+    setCooldown(true);
+    console.log(settings);
+    if (!settings.broadcastID) {
       sendNotification("No broadcast ID set");
+      setLoadingClip(false);
       return;
     }
 
     if (!isLive) {
       sendNotification("User is not live");
+      setLoadingClip(false);
+
       return;
     }
 
-    const clipResp = await createClip(settings.broadcast_id, settings);
+    const clipResp = await createClip(settings.broadcastID, settings);
     if (clipResp) {
       // get the edit URL
       const data = clipResp?.data;
       if (!data) {
         sendNotification("No clip data returned");
+        setLoadingClip(false);
         return;
       }
       if (data[0].edit_url) {
@@ -87,6 +97,7 @@ function App() {
         const c = {
           id: data[0].id,
           edit_url: data[0].edit_url,
+          channelName: settings.channelName,
         } as Clip;
         setClips([c, ...clips]);
       } else {
@@ -94,28 +105,42 @@ function App() {
       }
     }
     setLoadingClip(false);
+    setTimeout(() => {
+      setCooldown(false);
+    }, 10000);
   }
 
-  async function handleCommand(command: string) {
-    switch (command) {
-      case "CommandOrControl+Shift+S":
-        await handleCreateClip();
-        break;
-      default:
-        break;
+  async function activateShortcut() {
+    try {
+      await register("CommandOrControl+Shift+S", () => {
+        handleCreateClip();
+      });
+      setShortcutActive(true);
+      sendNotification("Shortcut activated");
+    } catch (e) {
+      console.log("Failed to register shortcut");
+      sendNotification("Failed to register shortcut");
+    }
+  }
+
+  async function deactivateShortcut() {
+    try {
+      await unregister("CommandOrControl+Shift+S");
+      setShortcutActive(false);
+      sendNotification("Shortcut deactivated");
+    } catch (e) {
+      console.log("Failed to deactivate shortcut");
+      sendNotification("Failed to deactivate shortcut");
     }
   }
 
   // runs on first load
   useAsyncEffect(async () => {
-    try {
-      await register("CommandOrControl+Shift+S", handleCommand);
-    } catch (e) {
-      console.log("Failed to register shortcut");
-    }
-    // this doesn't work
     const initialSettings = await loadSettings();
     setSettings(initialSettings as Settings);
+    // not working
+    const initialHistory = await loadHistory();
+    setClips(initialHistory as ClipHistory);
     const isNotify = await handleNotificationPermissions();
     if (!isNotify) {
       setUserMsg(
@@ -123,6 +148,10 @@ function App() {
       );
     }
   }, []);
+
+  useEffect(() => {
+    saveHistory(clips);
+  }, [clips]);
 
   const resolveCursor = (isLoading: boolean, isDisabled?: boolean) => {
     if (isLoading) {
@@ -135,7 +164,8 @@ function App() {
     return "pointer";
   };
 
-  const isClipDisabled = loadingClip || !isLive || !settings.broadcast_id;
+  const isClipDisabled =
+    loadingClip || !isLive || !settings.broadcastID || cooldown;
 
   return (
     <div className="container">
@@ -149,7 +179,6 @@ function App() {
       <div className="row">
         <div>
           <input
-            id="greet-input"
             onChange={(e) =>
               setSettings({ ...settings, clientId: e.target.value })
             }
@@ -157,7 +186,6 @@ function App() {
             placeholder="Client ID"
           />
           <input
-            id="greet-input"
             onChange={(e) =>
               setSettings({ ...settings, bearerToken: e.target.value })
             }
@@ -175,7 +203,6 @@ function App() {
       <div className="row">
         <div>
           <input
-            id="greet-input"
             placeholder="Channel Name"
             value={settings.channelName}
             onChange={(e) => {
@@ -194,9 +221,9 @@ function App() {
             style={{ maxWidth: "6.5em" }}
             placeholder="None"
             disabled
-            value={settings.broadcast_id}
+            value={settings.broadcastID}
           />
-          <button disabled={!settings.broadcast_id} onClick={handleCopyID}>
+          <button disabled={!settings.broadcastID} onClick={handleCopyID}>
             Copy ID
           </button>
         </div>
@@ -205,13 +232,26 @@ function App() {
         <button
           disabled={isClipDisabled}
           style={{
-            backgroundColor: "#A970FF",
+            backgroundColor: isClipDisabled ? "grey" : "#A970FF",
             color: "white",
             cursor: resolveCursor(loadingClip, isClipDisabled),
           }}
           onClick={handleCreateClip}
         >
           {loadingClip ? "Loading...." : "Clip!"}
+        </button>
+        {/* shortcuts are still not working as intended */}
+        {!shortcutActive && (
+          <button onClick={activateShortcut}> Activate Shortcut </button>
+        )}
+        {shortcutActive && (
+          <button onClick={deactivateShortcut}> Deactivate Shortcut </button>
+        )}
+        <button
+          style={{ backgroundColor: "red", color: "white" }}
+          onClick={() => setClips([])}
+        >
+          Clear History
         </button>
       </div>
       {isLive !== null && (
@@ -227,6 +267,7 @@ function App() {
         <thead>
           <tr>
             <th>Clip ID</th>
+            <th>Channel Name</th>
             <th>Edit URL</th>
           </tr>
         </thead>
@@ -234,6 +275,7 @@ function App() {
           {clips.map((c) => (
             <tr key={c.id}>
               <td>{c.id}</td>
+              <td>{c.channelName}</td>
               <td>
                 <a href={c.edit_url} target="_blank" rel="noreferrer">
                   Edit

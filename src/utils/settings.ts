@@ -11,7 +11,7 @@ export type Settings = {
   bearerToken: string;
   channelName: string;
   clientSecret: string;
-  broadcast_id: string;
+  broadcastID: string;
 };
 
 export const loadSettings = async () => {
@@ -20,7 +20,7 @@ export const loadSettings = async () => {
     bearerToken: "",
     channelName: "",
     clientSecret: "",
-    broadcast_id: "",
+    broadcastID: "",
   };
 
   const dir = BaseDirectory.App;

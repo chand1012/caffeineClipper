@@ -1,8 +1,9 @@
-import type { Settings } from "./types";
+import type { Settings } from "./settings";
 
 export type Clip = {
   id: string;
   edit_url: string;
+  channelName: string;
 };
 
 export const authURL = (settings: Settings) => {
