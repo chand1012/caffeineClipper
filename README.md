@@ -16,6 +16,7 @@ Make clips while you stream quickly and easily!
 * Make the hotkeys work when in system tray or just minimized.
 * Automatically save settings and update broadcast ID on typing stop.
 * Set up CD to automatically make and pin a build when a tag is made.
+* Save clip history locally per channel.
 
 ## Maybe
 
