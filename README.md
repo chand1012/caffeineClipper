@@ -1,20 +1,24 @@
 # Tauri + React + Typescript
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+# Caffeine Clipper
+Make clips while you stream quickly and easily! 
 
-## Recommended IDE Setup
+# Progress
 
-* [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
-# DONE
+## DONE
+
 * This can use a given bearer token and client ID to create clips from the given channel!
 * Saves settings locally.
-# TO DO
-* Find a way to get user bearer from client ID and secret. Need `clips.edit` scope.
-* Run the clip function on hotkey with some form of cooldown (like 10 seconds).
-* Get settings saving working.
-* ~~Hide the application to system tray. ~~ This was surprisingly easy.
-* ~~Make sure hotkeys work while in system tray.~~ They work on Windows!
-# Maybe
-* Add a simple editor for clips after the fact
+
+## TO DO
+
+* Find a way to capture bearer from token redirect on twitch auth page.
+* Make the hotkeys work when in system tray or just minimized.
+* Automatically save settings and update broadcast ID on typing stop.
+* Set up CD to automatically make and pin a build when a tag is made.
+
+## Maybe
+
+* Open clips editor in minimal browser in app rather than a browser window.
 * Export clips as vertical vids via FFMPEG (borrow some Pillar code)
-* Use whisper to listen for trigger words?
+* Use whisper to listen for trigger words? May be overkill.
