@@ -184,6 +184,7 @@ function App() {
             }
             value={settings.clientId}
             placeholder="Client ID"
+            type="password"
           />
           <input
             onChange={(e) =>
@@ -191,6 +192,7 @@ function App() {
             }
             value={settings.bearerToken}
             placeholder="Authorization"
+            type="password"
           />
           <button onClick={onSaveSettings}>Save</button>
         </div>
