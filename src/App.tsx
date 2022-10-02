@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Settings, loadSettings, saveSettings } from "./utils/settings";
 import "./App.css";
 import { register, unregister } from "@tauri-apps/api/globalShortcut";
@@ -138,7 +138,6 @@ function App() {
   useAsyncEffect(async () => {
     const initialSettings = await loadSettings();
     setSettings(initialSettings as Settings);
-    // not working
     const initialHistory = await loadHistory();
     setClips(initialHistory as ClipHistory);
     const isNotify = await handleNotificationPermissions();
@@ -149,8 +148,10 @@ function App() {
     }
   }, []);
 
-  useEffect(() => {
-    saveHistory(clips);
+  useAsyncEffect(async () => {
+    if (clips.length > 0) {
+      await saveHistory(clips);
+    }
   }, [clips]);
 
   const resolveCursor = (isLoading: boolean, isDisabled?: boolean) => {
