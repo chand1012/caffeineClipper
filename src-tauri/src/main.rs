@@ -30,16 +30,6 @@ fn main() {
             _ => {}
         })
         // handles login events. currently does nothing.
-        .on_page_load(|wry_window, _payload| {
-            wry_window
-                .emit_all(
-                    "receive-login",
-                    Payload {
-                        url: _payload.url().into(),
-                    },
-                )
-                .unwrap();
-        })
         .system_tray(SystemTray::new().with_menu(tray_menu))
         // this handles menu tray operation
         .on_system_tray_event(|app, event| match event {

@@ -12,6 +12,7 @@ export type Settings = {
   channelName: string;
   clientSecret: string;
   broadcastID: string;
+  colorMode: "light" | "dark";
 };
 
 export const loadSettings = async () => {
@@ -21,6 +22,7 @@ export const loadSettings = async () => {
     channelName: "",
     clientSecret: "",
     broadcastID: "",
+    colorMode: "dark",
   };
 
   const dir = BaseDirectory.App;

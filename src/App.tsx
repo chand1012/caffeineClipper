@@ -1,4 +1,25 @@
 import { useState } from "react";
+import {
+  Stack,
+  Image,
+  Title,
+  Text,
+  Group,
+  TextInput,
+  Button,
+  Loader,
+  ActionIcon,
+  Alert,
+  useMantineColorScheme,
+} from "@mantine/core";
+import {
+  IconCopy,
+  IconAlertCircle,
+  IconTrashX,
+  IconBrandTwitch,
+  IconDeviceFloppy as IconSave,
+} from "@tabler/icons";
+import { useDebouncedValue } from "@mantine/hooks";
 import { Settings, loadSettings, saveSettings } from "./utils/settings";
 import "./App.css";
 import { register, unregister } from "@tauri-apps/api/globalShortcut";
@@ -14,9 +35,13 @@ import {
 } from "./utils/twitch";
 import { writeText } from "@tauri-apps/api/clipboard";
 import { loadHistory, saveHistory, ClipHistory } from "./utils/history";
+import { StyledTable as Table } from "./components/Table";
+import { ThemeButton } from "./components/ThemeButton";
 
 function App() {
+  const { colorScheme } = useMantineColorScheme();
   const [settings, setSettings] = useState<Settings>({} as Settings);
+  const [debouncedUser] = useDebouncedValue(settings.channelName, 500);
   const [userMsg, setUserMsg] = useState<string>("");
   const [isLive, setIsLive] = useState<boolean | null>(null);
   const [clips, setClips] = useState<Clip[]>([]);
@@ -24,21 +49,8 @@ function App() {
   const [loadingID, setLoadingID] = useState<boolean>(false);
   const [cooldown, setCooldown] = useState<boolean>(false);
   const [shortcutActive, setShortcutActive] = useState<boolean>(false);
-
-  async function authenticate() {
-    const url = authURL(settings);
-    // get the twitch login screen
-    console.log(url);
-    setUserMsg(
-      "Open this link in your browser and copy the returned access token: " +
-        url
-    );
-
-    // remove the message in 15 seconds
-    setTimeout(() => {
-      setUserMsg("");
-    }, 15000);
-  }
+  const [notificationEnabled, setNotificationEnabled] =
+    useState<boolean>(false);
 
   async function onSaveSettings() {
     // save settings
@@ -93,12 +105,12 @@ function App() {
         return;
       }
       if (data[0].edit_url) {
-        setUserMsg("Success! Edit the clip at: " + data[0].edit_url);
         const c = {
           id: data[0].id,
           edit_url: data[0].edit_url,
           channelName: settings.channelName,
         } as Clip;
+        sendNotification({ title: "Success!", body: "Clip created" });
         setClips([c, ...clips]);
       } else {
         sendNotification("No edit URL returned");
@@ -141,154 +153,183 @@ function App() {
     const initialHistory = await loadHistory();
     setClips(initialHistory as ClipHistory);
     const isNotify = await handleNotificationPermissions();
-    if (!isNotify) {
-      setUserMsg(
-        "Notifications are not enabled. Please check your permissions."
-      );
-    }
+    setNotificationEnabled(isNotify);
   }, []);
 
+  // runs on clip update
   useAsyncEffect(async () => {
     if (clips.length > 0) {
       await saveHistory(clips);
     }
   }, [clips]);
 
-  const resolveCursor = (isLoading: boolean, isDisabled?: boolean) => {
-    if (isLoading) {
-      return "wait";
+  // runs on user change
+  useAsyncEffect(async () => {
+    if (debouncedUser) {
+      await handleUpdateID();
     }
-    if (isDisabled) {
-      return "not-allowed";
-    }
-
-    return "pointer";
-  };
+  }, [debouncedUser]);
 
   const isClipDisabled =
     loadingClip || !isLive || !settings.broadcastID || cooldown;
 
   return (
-    <div className="container">
-      <div className="row">
-        <img className="logo" src="/logo.png" alt="logo" />
-      </div>
-      <h1>Welcome to CaffeineClipper!</h1>
+    <Stack align="center">
+      <Image src="/logo.png" alt="logo" width={200} height={200} />
+      <Title>Welcome to CaffeineClipper!</Title>
 
-      <p>Enter your authorization token below!</p>
-
-      <div className="row">
-        <div>
-          <input
-            onChange={(e) =>
-              setSettings({ ...settings, clientId: e.target.value })
-            }
-            value={settings.clientId}
-            placeholder="Client ID"
-            type="password"
-          />
-          <input
-            onChange={(e) =>
-              setSettings({ ...settings, bearerToken: e.target.value })
-            }
-            value={settings.bearerToken}
-            placeholder="Authorization"
-            type="password"
-          />
-          <button onClick={onSaveSettings}>Save</button>
-        </div>
-      </div>
-      <div className="row">
-        <div>
-          <button onClick={authenticate}>Authenticate</button>
-        </div>
-      </div>
-      <div className="row">
-        <div>
-          <input
-            placeholder="Channel Name"
-            value={settings.channelName}
-            onChange={(e) => {
-              setIsLive(null);
-              setSettings({ ...settings, channelName: e.target.value });
-            }}
-          />
-          <button
-            disabled={loadingID}
-            style={{ cursor: resolveCursor(loadingID) }}
-            onClick={handleUpdateID}
-          >
-            Update
-          </button>
-          <input
-            style={{ maxWidth: "6.5em" }}
-            placeholder="None"
-            disabled
-            value={settings.broadcastID}
-          />
-          <button disabled={!settings.broadcastID} onClick={handleCopyID}>
-            Copy ID
-          </button>
-        </div>
-      </div>
-      <div className="row">
-        <button
-          disabled={isClipDisabled}
-          style={{
-            backgroundColor: isClipDisabled ? "grey" : "#A970FF",
-            color: "white",
-            cursor: resolveCursor(loadingClip, isClipDisabled),
-          }}
-          onClick={handleCreateClip}
+      {!notificationEnabled && (
+        <Alert
+          title="Notifications are disabled"
+          icon={<IconAlertCircle size={16} />}
+          color="yellow"
         >
-          {loadingClip ? "Loading...." : "Clip!"}
-        </button>
+          Notifications are disabled. You will not be notified when a clip is
+          created.
+        </Alert>
+      )}
+
+      {!settings.clientId && !settings.bearerToken && (
+        <Alert
+          icon={<IconAlertCircle size={16} />}
+          title={"Missing Client ID and Bearer Token!"}
+          color="red"
+        >
+          Please enter your Client ID and Bearer Token below!
+        </Alert>
+      )}
+      {!settings.bearerToken && settings.clientId && (
+        <Alert
+          icon={<IconAlertCircle size={16} />}
+          title={"Missing Bearer Token!"}
+          color="red"
+        >
+          You can get your Bearer Token by authenticating with Twitch below.
+          Then enter it in the box!
+        </Alert>
+      )}
+      {!settings.clientId && settings.bearerToken && (
+        <Alert
+          icon={<IconAlertCircle size={16} />}
+          title={"Missing Client ID!"}
+          color="red"
+        >
+          Please enter your Client ID below!
+        </Alert>
+      )}
+
+      <Group>
+        <TextInput
+          label="Client ID"
+          onChange={(e) => {
+            setSettings({ ...settings, clientId: e.target.value });
+          }}
+          value={settings.clientId}
+          placeholder="Client ID"
+        />
+        <TextInput
+          label="Bearer Token"
+          onChange={(e) => {
+            setSettings({ ...settings, bearerToken: e.target.value });
+          }}
+          value={settings.bearerToken}
+          placeholder="Bearer Token"
+          type="password"
+        />
+      </Group>
+
+      <Group>
+        <Button
+          variant={colorScheme === "dark" ? "outline" : "filled"}
+          onClick={onSaveSettings}
+          leftIcon={<IconSave size={14} />}
+        >
+          Save Settings
+        </Button>
+        <Button
+          variant={colorScheme === "dark" ? "outline" : "filled"}
+          component="a"
+          href={authURL(settings)}
+          target="_blank"
+        >
+          Authenticate
+        </Button>
+        <ThemeButton />
+      </Group>
+      <Group>
+        <TextInput
+          placeholder="Channel Name"
+          value={settings.channelName}
+          onChange={(e) => {
+            setIsLive(null);
+            setSettings({ ...settings, channelName: e.target.value });
+          }}
+          rightSection={loadingID ? <Loader size="xs" /> : null}
+        />
+        <TextInput
+          style={{ width: "8em" }}
+          placeholder="Broadcast ID"
+          disabled
+          value={settings.broadcastID}
+          rightSection={
+            <ActionIcon onClick={handleCopyID}>
+              <IconCopy />
+            </ActionIcon>
+          }
+        />
+      </Group>
+
+      <Group>
+        <Button
+          disabled={isClipDisabled}
+          color={isClipDisabled ? "gray" : "grape"}
+          onClick={handleCreateClip}
+          loading={loadingClip}
+          leftIcon={<IconBrandTwitch size={14} />}
+          variant={colorScheme === "dark" ? "outline" : "filled"}
+        >
+          Clip!
+        </Button>
         {/* shortcuts are still not working as intended */}
         {!shortcutActive && (
-          <button onClick={activateShortcut}> Activate Shortcut </button>
+          <Button
+            variant={colorScheme === "dark" ? "outline" : "filled"}
+            color="green"
+            onClick={activateShortcut}
+          >
+            {" "}
+            Activate Shortcut{" "}
+          </Button>
         )}
         {shortcutActive && (
-          <button onClick={deactivateShortcut}> Deactivate Shortcut </button>
+          <Button
+            variant={colorScheme === "dark" ? "outline" : "filled"}
+            color="orange"
+            onClick={deactivateShortcut}
+          >
+            {" "}
+            Deactivate Shortcut{" "}
+          </Button>
         )}
-        <button
-          style={{ backgroundColor: "red", color: "white" }}
+        <Button
+          color="red"
           onClick={() => setClips([])}
+          leftIcon={<IconTrashX size={14} />}
+          variant={colorScheme === "dark" ? "outline" : "filled"}
         >
           Clear History
-        </button>
-      </div>
-      {isLive !== null && (
-        <div className="row">
-          {isLive && <p>{settings.channelName} is live!</p>}
-          {!isLive && <p>{settings.channelName} is not live.</p>}
-        </div>
+        </Button>
+      </Group>
+
+      {isLive && <Text>{settings.channelName} is live!</Text>}
+      {!isLive && isLive !== null && (
+        <Text>{settings.channelName} is not live.</Text>
       )}
-      <p>{userMsg}</p>
-      {/* This is temporary until I make a better solution */}
-      {/* Table of the clip IDs and edit URLs */}
-      <table>
-        <thead>
-          <tr>
-            <th>Clip ID</th>
-            <th>Channel Name</th>
-            <th>Edit URL</th>
-          </tr>
-        </thead>
-        <tbody>
-          {clips.map((c) => (
-            <tr key={c.id}>
-              <td>{c.id}</td>
-              <td>{c.channelName}</td>
-              <td>
-                <a href={c.edit_url} target="_blank" rel="noreferrer">
-                  Edit
-                </a>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+
+      <Text align="center">{userMsg}</Text>
+
+      <Table data={clips} />
+    </Stack>
   );
 }
 
