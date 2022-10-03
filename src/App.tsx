@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Stack,
   Image,
@@ -38,6 +38,7 @@ import { writeText } from "@tauri-apps/api/clipboard";
 import { loadHistory, saveHistory, ClipHistory } from "./utils/history";
 import { StyledTable as Table } from "./components/Table";
 import { ThemeButton } from "./components/ThemeButton";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
 
 function App() {
   const { colorScheme } = useMantineColorScheme();
@@ -52,6 +53,8 @@ function App() {
   const [shortcutActive, setShortcutActive] = useState<boolean>(false);
   const [notificationEnabled, setNotificationEnabled] =
     useState<boolean>(false);
+  // state to hold a function that returns void
+  const [token, setToken] = useState<string>("");
 
   async function onAuth() {
     // get the login window
@@ -59,6 +62,7 @@ function App() {
     // open the login window
     const login = WebviewWindow.getByLabel("login");
     if (login) {
+      console.log("login window already exists");
       login.emit("open", url);
       login.show();
     }
@@ -166,6 +170,21 @@ function App() {
     setClips(initialHistory as ClipHistory);
     const isNotify = await handleNotificationPermissions();
     setNotificationEnabled(isNotify);
+    await listen("recieve-login", (event) => {
+      console.log(event);
+      const login = WebviewWindow.getByLabel("login");
+      if (login) {
+        // @ts-ignore
+        const params = new URLSearchParams(event.payload.url.split("#")[1]);
+
+        const bearerToken = params.get("access_token");
+
+        if (bearerToken) {
+          setToken(bearerToken);
+          login.close();
+        }
+      }
+    });
   }, []);
 
   // runs on clip update
@@ -181,6 +200,12 @@ function App() {
       await handleUpdateID();
     }
   }, [debouncedUser]);
+
+  useEffect(() => {
+    if (token) {
+      setSettings({ ...settings, bearerToken: token });
+    }
+  }, [token]);
 
   const isClipDisabled =
     loadingClip || !isLive || !settings.broadcastID || cooldown;
@@ -251,27 +276,10 @@ function App() {
       </Group>
 
       <Group>
-        <Button
-          variant={colorScheme === "dark" ? "outline" : "filled"}
-          onClick={onSaveSettings}
-          leftIcon={<IconSave size={14} />}
-        >
+        <Button onClick={onSaveSettings} leftIcon={<IconSave size={14} />}>
           Save Settings
         </Button>
-        {/* <Button
-          variant={colorScheme === "dark" ? "outline" : "filled"}
-          component="a"
-          href={authURL(settings)}
-          target="_blank"
-        >
-          Authenticate
-        </Button> */}
-        <Button
-          variant={colorScheme === "dark" ? "outline" : "filled"}
-          onClick={onAuth}
-        >
-          Authenticate
-        </Button>
+        <Button onClick={onAuth}>Authenticate</Button>
         <ThemeButton />
       </Group>
       <Group>

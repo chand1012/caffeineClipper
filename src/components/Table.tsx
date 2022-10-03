@@ -16,7 +16,7 @@ export function StyledTable({ data }: TableReviewsProps) {
           <Button
             component="a"
             href={row.edit_url}
-            variant="outline"
+            target="_blank"
             leftIcon={<IconExternalLink size={14} />}
           >
             Edit

@@ -99,7 +99,8 @@
       {
         "label": "login",
         "title": "Twitch Login",
-        "visible": false
+        "visible": false,
+        "url": "login.html"
       }
     ]
   }
