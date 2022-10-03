@@ -59,6 +59,29 @@ fn main() {
             },
             _ => {}
         })
+        .on_page_load(|wry_window, _payload| {
+            wry_window
+                .emit_all(
+                    "receive-login",
+                    Payload {
+                        url: _payload.url().into(),
+                    },
+                )
+                .unwrap();
+        })
+        .setup(|app| {
+            // get the login window
+            let window = app.get_window("login").unwrap();
+            // attach a listener to the login window
+            window.listen("open", move |event| {
+                // get the url from the event payload
+                let url = event.payload().unwrap();
+                window
+                    .eval(&format!("window.location.replace('{}');", url))
+                    .unwrap();
+            });
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

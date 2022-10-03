@@ -26,6 +26,7 @@ import { register, unregister } from "@tauri-apps/api/globalShortcut";
 import useAsyncEffect from "use-async-effect";
 import { handleNotificationPermissions } from "./utils/notifications";
 import { sendNotification } from "@tauri-apps/api/notification";
+import { WebviewWindow } from "@tauri-apps/api/window";
 import {
   authURL,
   Clip,
@@ -51,6 +52,17 @@ function App() {
   const [shortcutActive, setShortcutActive] = useState<boolean>(false);
   const [notificationEnabled, setNotificationEnabled] =
     useState<boolean>(false);
+
+  async function onAuth() {
+    // get the login window
+    const url = authURL(settings);
+    // open the login window
+    const login = WebviewWindow.getByLabel("login");
+    if (login) {
+      login.emit("open", url);
+      login.show();
+    }
+  }
 
   async function onSaveSettings() {
     // save settings
@@ -246,11 +258,17 @@ function App() {
         >
           Save Settings
         </Button>
-        <Button
+        {/* <Button
           variant={colorScheme === "dark" ? "outline" : "filled"}
           component="a"
           href={authURL(settings)}
           target="_blank"
+        >
+          Authenticate
+        </Button> */}
+        <Button
+          variant={colorScheme === "dark" ? "outline" : "filled"}
+          onClick={onAuth}
         >
           Authenticate
         </Button>

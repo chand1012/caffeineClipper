@@ -95,6 +95,11 @@
         "title": "CaffeineClipper",
         "width": 800,
         "label": "main"
+      },
+      {
+        "label": "login",
+        "title": "Twitch Login",
+        "visible": false
       }
     ]
   }
