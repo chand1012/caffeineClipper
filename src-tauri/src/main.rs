@@ -3,12 +3,45 @@
     windows_subsystem = "windows"
 )]
 
+use rocket::get;
+use std::path::Path;
 use tauri::Manager;
 use tauri::{CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
+
+const CONFIG_DIR_LINUX: &str = "$HOME/.config/dev.chand1012.caffeineclipper";
+const CONFIG_DIR_WINDOWS: &str = "%appdata%/dev.chand1012.caffeineclipper";
+const CONFIG_DIR_MACOS: &str = "$HOME/Library/Application Support/dev.chand1012.caffeineclipper";
 
 #[derive(Clone, serde::Serialize)]
 struct Payload {
     url: String,
+}
+
+#[get("/capture?<token>")]
+fn capture(token: String) -> String {
+    // save the token to a file
+    // return a success message
+    format!("Token: {}", token);
+    let mut config_dir = "";
+    if cfg!(target_os = "linux") {
+        config_dir = CONFIG_DIR_LINUX;
+    } else if cfg!(target_os = "windows") {
+        config_dir = CONFIG_DIR_WINDOWS;
+    } else if cfg!(target_os = "macos") {
+        config_dir = CONFIG_DIR_MACOS;
+    }
+
+    let full_path = shellexpand::full(config_dir).unwrap();
+
+    let path = Path::new(full_path.as_ref());
+
+    // create the config directory if it doesn't exist
+    std::fs::create_dir_all(path).unwrap();
+
+    // write the token to the file
+    std::fs::write(path.join("token.txt"), token).unwrap();
+
+    "ok".to_string()
 }
 
 fn main() {
@@ -59,6 +92,14 @@ fn main() {
                 _ => {}
             },
             _ => {}
+        })
+        .setup(|_app| {
+            tauri::async_runtime::spawn(
+                rocket::build()
+                    .mount("/", rocket::routes![capture])
+                    .launch(),
+            );
+            Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
