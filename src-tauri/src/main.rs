@@ -7,6 +7,7 @@ use rocket::get;
 use std::path::Path;
 use tauri::Manager;
 use tauri::{CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
+use tauri_plugin_fs_watch::Watcher;
 
 const CONFIG_DIR_LINUX: &str = "$HOME/.config/dev.chand1012.caffeineclipper";
 const CONFIG_DIR_WINDOWS: &str = "%appdata%/dev.chand1012.caffeineclipper";
@@ -101,6 +102,7 @@ fn main() {
             );
             Ok(())
         })
+        .plugin(Watcher::default())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

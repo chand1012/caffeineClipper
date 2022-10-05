@@ -39,6 +39,8 @@ import { loadHistory, saveHistory, ClipHistory } from "./utils/history";
 import { StyledTable as Table } from "./components/Table";
 import { ThemeButton } from "./components/ThemeButton";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { watch } from "tauri-plugin-fs-watch-api";
+import { appDir } from "@tauri-apps/api/path";
 
 function App() {
   const { colorScheme } = useMantineColorScheme();
@@ -170,20 +172,8 @@ function App() {
     setClips(initialHistory as ClipHistory);
     const isNotify = await handleNotificationPermissions();
     setNotificationEnabled(isNotify);
-    await listen("recieve-login", (event) => {
+    await watch(await appDir(), {}, (event) => {
       console.log(event);
-      const login = WebviewWindow.getByLabel("login");
-      if (login) {
-        // @ts-ignore
-        const params = new URLSearchParams(event.payload.url.split("#")[1]);
-
-        const bearerToken = params.get("access_token");
-
-        if (bearerToken) {
-          setToken(bearerToken);
-          login.close();
-        }
-      }
     });
   }, []);
 
