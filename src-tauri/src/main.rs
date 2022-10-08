@@ -3,19 +3,45 @@
     windows_subsystem = "windows"
 )]
 
-use rocket::get;
-use std::path::Path;
+use rocket::fairing::{Fairing, Info, Kind};
+use rocket::http::Header;
+use rocket::{get, options};
+use rocket::{Request, Response};
 use tauri::Manager;
 use tauri::{CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
 use tauri_plugin_fs_watch::Watcher;
 
-const CONFIG_DIR_LINUX: &str = "$HOME/.config/dev.chand1012.caffeineclipper";
-const CONFIG_DIR_WINDOWS: &str = "%appdata%/dev.chand1012.caffeineclipper";
-const CONFIG_DIR_MACOS: &str = "$HOME/Library/Application Support/dev.chand1012.caffeineclipper";
+pub struct CORS;
+
+#[rocket::async_trait]
+impl Fairing for CORS {
+    fn info(&self) -> Info {
+        Info {
+            name: "Add CORS headers to responses",
+            kind: Kind::Response,
+        }
+    }
+
+    async fn on_response<'r>(&self, _request: &'r Request<'_>, response: &mut Response<'r>) {
+        response.set_header(Header::new("Access-Control-Allow-Origin", "*"));
+        response.set_header(Header::new(
+            "Access-Control-Allow-Methods",
+            "POST, GET, PATCH, OPTIONS",
+        ));
+        response.set_header(Header::new("Access-Control-Allow-Headers", "*"));
+        response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
+    }
+}
 
 #[derive(Clone, serde::Serialize)]
 struct Payload {
     url: String,
+}
+
+/// Catches all OPTION requests in order to get the CORS related Fairing triggered.
+#[options("/<_..>")]
+fn all_options() {
+    /* Intentionally left empty */
 }
 
 #[get("/capture?<token>")]
@@ -23,24 +49,15 @@ fn capture(token: String) -> String {
     // save the token to a file
     // return a success message
     format!("Token: {}", token);
-    let mut config_dir = "";
-    if cfg!(target_os = "linux") {
-        config_dir = CONFIG_DIR_LINUX;
-    } else if cfg!(target_os = "windows") {
-        config_dir = CONFIG_DIR_WINDOWS;
-    } else if cfg!(target_os = "macos") {
-        config_dir = CONFIG_DIR_MACOS;
-    }
-
-    let full_path = shellexpand::full(config_dir).unwrap();
-
-    let path = Path::new(full_path.as_ref());
+    let config_dir = dirs::config_dir()
+        .unwrap()
+        .join("dev.chand1012.caffeineclipper");
 
     // create the config directory if it doesn't exist
-    std::fs::create_dir_all(path).unwrap();
+    std::fs::create_dir_all(&config_dir).unwrap();
 
     // write the token to the file
-    std::fs::write(path.join("token.txt"), token).unwrap();
+    std::fs::write(&config_dir.join("token.txt"), token).unwrap();
 
     "ok".to_string()
 }
@@ -97,7 +114,8 @@ fn main() {
         .setup(|_app| {
             tauri::async_runtime::spawn(
                 rocket::build()
-                    .mount("/", rocket::routes![capture])
+                    .attach(CORS)
+                    .mount("/", rocket::routes![capture, all_options])
                     .launch(),
             );
             Ok(())

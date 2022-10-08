@@ -19,10 +19,7 @@
         "all": true
       },
       "fs": {
-        "createDir": true,
-        "readDir": true,
-        "readFile": true,
-        "writeFile": true,
+        "all": true,
         "scope": ["$APP", "$APP/**"]
       },
       "notification": {
@@ -95,12 +92,6 @@
         "title": "CaffeineClipper",
         "width": 800,
         "label": "main"
-      },
-      {
-        "label": "login",
-        "title": "Twitch Login",
-        "visible": false,
-        "url": "login.html"
       }
     ]
   }
