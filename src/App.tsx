@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Stack,
   Image,
@@ -11,6 +11,7 @@ import {
   ActionIcon,
   Alert,
   useMantineColorScheme,
+  Space,
 } from "@mantine/core";
 import {
   IconCopy,
@@ -19,6 +20,7 @@ import {
   IconBrandTwitch,
   IconDeviceFloppy as IconSave,
 } from "@tabler/icons";
+import { openConfirmModal } from "@mantine/modals";
 import { useDebouncedValue } from "@mantine/hooks";
 import { Settings, loadSettings, saveSettings } from "./utils/settings";
 import "./App.css";
@@ -32,6 +34,7 @@ import {
   Clip,
   createClip,
   getBroadcastID,
+  getCurrentUser,
   isUserLive,
 } from "./utils/twitch";
 import { writeText } from "@tauri-apps/api/clipboard";
@@ -40,13 +43,18 @@ import { StyledTable as Table } from "./components/Table";
 import { ThemeButton } from "./components/ThemeButton";
 import { watch, DebouncedEvent } from "tauri-plugin-fs-watch-api";
 import { appDir } from "@tauri-apps/api/path";
-import { readTextFile, removeFile } from "@tauri-apps/api/fs";
+import { readTextFile } from "@tauri-apps/api/fs";
 import { open } from "@tauri-apps/api/shell";
 
 function App() {
   const { colorScheme } = useMantineColorScheme();
-  const [settings, setSettings] = useState<Settings>({} as Settings);
+  const [settings, setSettings] = useState<Settings>({
+    clientId: "wnnkc8v7ytf770n8um30xfym79j6pf",
+  } as Settings);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [debouncedSettings] = useDebouncedValue(settings, 500);
   const [debouncedUser] = useDebouncedValue(settings.channelName, 500);
+  const [authUser, setAuthUser] = useState("");
   const [isLive, setIsLive] = useState<boolean | null>(null);
   const [clips, setClips] = useState<Clip[]>([]);
   const [loadingClip, setLoadingClip] = useState<boolean>(false);
@@ -56,18 +64,11 @@ function App() {
   const [notificationEnabled, setNotificationEnabled] =
     useState<boolean>(false);
 
-  async function onAuth() {
-    // get the login window
-    const url = authURL(settings);
-    // open the login window
-    // const login = new WebviewWindow("login", {
-    //   url,
-    //   title: "Twitch Login",
-    // });
+  console.log(settings);
 
-    // login.listen("tauri://close-requested", () => {
-    //   login.close();
-    // });
+  async function onAuth() {
+    setAuthLoading(true);
+    const url = authURL(settings);
     open(url);
   }
 
@@ -82,11 +83,22 @@ function App() {
     });
   }
 
-  async function onSaveSettings() {
-    // save settings
-    await saveSettings(settings);
-    sendNotification("Settings saved");
-  }
+  const openConfirmDeleteModal = () => {
+    openConfirmModal({
+      title: "Delete History",
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete your clip history? This action cannot
+          be undone.
+        </Text>
+      ),
+      onConfirm: () => {
+        setClips([]);
+      },
+      labels: { confirm: "Delete", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+    });
+  };
 
   async function handleCopyID() {
     await writeText(settings.broadcastID);
@@ -209,6 +221,26 @@ function App() {
     }
   }, [debouncedUser]);
 
+  // runs on settings change
+  useAsyncEffect(async () => {
+    if (debouncedSettings) {
+      await saveSettings(debouncedSettings);
+      if (debouncedSettings.bearerToken) {
+        setAuthLoading(false);
+        const currentUserData = await getCurrentUser(debouncedSettings);
+        if (currentUserData) {
+          setAuthUser(currentUserData.login);
+        }
+      }
+    }
+  }, [debouncedSettings]);
+
+  useEffect(() => {
+    if (settings.bearerToken) {
+      setAuthLoading(false);
+    }
+  }, [settings.bearerToken]);
+
   const isClipDisabled =
     loadingClip || !isLive || !settings.broadcastID || cooldown;
 
@@ -228,61 +260,23 @@ function App() {
         </Alert>
       )}
 
-      {!settings.clientId && !settings.bearerToken && (
-        <Alert
-          icon={<IconAlertCircle size={16} />}
-          title={"Missing Client ID and Bearer Token!"}
-          color="red"
-        >
-          Please enter your Client ID and Bearer Token below!
-        </Alert>
-      )}
-      {!settings.bearerToken && settings.clientId && (
-        <Alert
-          icon={<IconAlertCircle size={16} />}
-          title={"Missing Bearer Token!"}
-          color="red"
-        >
-          You can get your Bearer Token by authenticating with Twitch below.
-          Then enter it in the box!
-        </Alert>
-      )}
-      {!settings.clientId && settings.bearerToken && (
-        <Alert
-          icon={<IconAlertCircle size={16} />}
-          title={"Missing Client ID!"}
-          color="red"
-        >
-          Please enter your Client ID below!
-        </Alert>
-      )}
-
       <Group>
-        <TextInput
-          label="Client ID"
-          onChange={(e) => {
-            setSettings({ ...settings, clientId: e.target.value });
-          }}
-          value={settings.clientId}
-          placeholder="Client ID"
-        />
-        <TextInput
-          label="Bearer Token"
-          onChange={(e) => {
-            setSettings({ ...settings, bearerToken: e.target.value });
-          }}
-          value={settings.bearerToken}
-          placeholder="Bearer Token"
-        />
-      </Group>
-
-      <Group>
-        <Button onClick={onSaveSettings} leftIcon={<IconSave />}>
-          Save Settings
+        <Button
+          color={settings.bearerToken ? "gray" : "purple"}
+          onClick={onAuth}
+          loading={authLoading}
+        >
+          {settings.bearerToken ? "Re-Authenticate" : "Authenticate"}
         </Button>
-        <Button onClick={onAuth}>Authenticate</Button>
         <ThemeButton />
       </Group>
+      {authUser ? (
+        <Text>
+          Authenticated as <b>{authUser}</b>
+        </Text>
+      ) : (
+        <Space style={{ height: "24.8px" }} />
+      )}
       <Group>
         <TextInput
           placeholder="Channel Name"
@@ -293,7 +287,9 @@ function App() {
           }}
           rightSection={loadingID ? <Loader size="xs" /> : null}
         />
-        <Button onClick={openChat}>Open Chat</Button>
+        <Button disabled={isClipDisabled} onClick={openChat}>
+          Open Chat
+        </Button>
         <TextInput
           style={{ width: "8em" }}
           placeholder="Broadcast ID"
@@ -322,6 +318,7 @@ function App() {
           <Button
             variant={colorScheme === "dark" ? "outline" : "filled"}
             color="green"
+            disabled={isClipDisabled}
             onClick={activateShortcut}
           >
             {" "}
@@ -340,7 +337,8 @@ function App() {
         )}
         <Button
           color="red"
-          onClick={() => setClips([])}
+          onClick={openConfirmDeleteModal}
+          disabled={clips.length === 0}
           leftIcon={<IconTrashX size={14} />}
           variant={colorScheme === "dark" ? "outline" : "filled"}
         >

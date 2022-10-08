@@ -7,6 +7,7 @@ import {
 } from "@mantine/core";
 import App from "./App";
 import "./style.css";
+import { ModalsProvider } from "@mantine/modals";
 
 // use this to generate color schemes: https://smart-swatch.netlify.app
 
@@ -42,7 +43,9 @@ function CompleteApp() {
         withGlobalStyles
         withNormalizeCSS
       >
-        <App />
+        <ModalsProvider>
+          <App />
+        </ModalsProvider>
       </MantineProvider>
     </ColorSchemeProvider>
   );

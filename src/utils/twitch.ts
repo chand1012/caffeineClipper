@@ -49,6 +49,18 @@ export const isUserLive = async (settings: Settings) => {
   return res_data?.data?.length > 0;
 };
 
+export const getCurrentUser = async (settings: Settings) => {
+  const { clientId, bearerToken } = settings;
+  const url = `https://api.twitch.tv/helix/users`;
+  const headers = {
+    "Client-ID": clientId,
+    Authorization: `Bearer ${bearerToken}`,
+  };
+  const res = await fetch(url, { headers });
+  const res_data = await res.json();
+  return res_data?.data?.[0];
+};
+
 export const getClipData = async (clipID: string, settings: Settings) => {
   const { clientId, bearerToken } = settings;
   const url = `https://api.twitch.tv/helix/clips?id=${clipID}`;

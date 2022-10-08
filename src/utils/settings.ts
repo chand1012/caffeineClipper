@@ -17,7 +17,7 @@ export type Settings = {
 
 export const loadSettings = async () => {
   const settings: Settings = {
-    clientId: "",
+    clientId: "wnnkc8v7ytf770n8um30xfym79j6pf",
     bearerToken: "",
     channelName: "",
     clientSecret: "",
