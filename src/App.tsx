@@ -26,6 +26,7 @@ import { register, unregister } from "@tauri-apps/api/globalShortcut";
 import useAsyncEffect from "use-async-effect";
 import { handleNotificationPermissions } from "./utils/notifications";
 import { sendNotification } from "@tauri-apps/api/notification";
+import { WebviewWindow } from "@tauri-apps/api/window";
 import {
   authURL,
   Clip,
@@ -37,12 +38,15 @@ import { writeText } from "@tauri-apps/api/clipboard";
 import { loadHistory, saveHistory, ClipHistory } from "./utils/history";
 import { StyledTable as Table } from "./components/Table";
 import { ThemeButton } from "./components/ThemeButton";
+import { watch, DebouncedEvent } from "tauri-plugin-fs-watch-api";
+import { appDir } from "@tauri-apps/api/path";
+import { readTextFile, removeFile } from "@tauri-apps/api/fs";
+import { open } from "@tauri-apps/api/shell";
 
 function App() {
   const { colorScheme } = useMantineColorScheme();
   const [settings, setSettings] = useState<Settings>({} as Settings);
   const [debouncedUser] = useDebouncedValue(settings.channelName, 500);
-  const [userMsg, setUserMsg] = useState<string>("");
   const [isLive, setIsLive] = useState<boolean | null>(null);
   const [clips, setClips] = useState<Clip[]>([]);
   const [loadingClip, setLoadingClip] = useState<boolean>(false);
@@ -51,6 +55,32 @@ function App() {
   const [shortcutActive, setShortcutActive] = useState<boolean>(false);
   const [notificationEnabled, setNotificationEnabled] =
     useState<boolean>(false);
+
+  async function onAuth() {
+    // get the login window
+    const url = authURL(settings);
+    // open the login window
+    // const login = new WebviewWindow("login", {
+    //   url,
+    //   title: "Twitch Login",
+    // });
+
+    // login.listen("tauri://close-requested", () => {
+    //   login.close();
+    // });
+    open(url);
+  }
+
+  async function openChat() {
+    const chat = new WebviewWindow("chat", {
+      url: `https://www.twitch.tv/popout/${settings.channelName}/chat?popout=`,
+      title: settings.channelName + "'s Chat",
+    });
+
+    chat.listen("tauri://close-requested", () => {
+      chat.close();
+    });
+  }
 
   async function onSaveSettings() {
     // save settings
@@ -81,7 +111,6 @@ function App() {
     }
     setLoadingClip(true);
     setCooldown(true);
-    console.log(settings);
     if (!settings.broadcastID) {
       sendNotification("No broadcast ID set");
       setLoadingClip(false);
@@ -154,6 +183,16 @@ function App() {
     setClips(initialHistory as ClipHistory);
     const isNotify = await handleNotificationPermissions();
     setNotificationEnabled(isNotify);
+    await watch(await appDir(), {}, async (event: DebouncedEvent) => {
+      const payload = event.payload as string;
+      if (
+        payload.endsWith("token.txt") &&
+        (event.type === "Create" || event.type === "Write")
+      ) {
+        const token = await readTextFile(payload);
+        setSettings({ ...settings, bearerToken: token });
+      }
+    });
   }, []);
 
   // runs on clip update
@@ -234,26 +273,14 @@ function App() {
           }}
           value={settings.bearerToken}
           placeholder="Bearer Token"
-          type="password"
         />
       </Group>
 
       <Group>
-        <Button
-          variant={colorScheme === "dark" ? "outline" : "filled"}
-          onClick={onSaveSettings}
-          leftIcon={<IconSave size={14} />}
-        >
+        <Button onClick={onSaveSettings} leftIcon={<IconSave />}>
           Save Settings
         </Button>
-        <Button
-          variant={colorScheme === "dark" ? "outline" : "filled"}
-          component="a"
-          href={authURL(settings)}
-          target="_blank"
-        >
-          Authenticate
-        </Button>
+        <Button onClick={onAuth}>Authenticate</Button>
         <ThemeButton />
       </Group>
       <Group>
@@ -266,6 +293,7 @@ function App() {
           }}
           rightSection={loadingID ? <Loader size="xs" /> : null}
         />
+        <Button onClick={openChat}>Open Chat</Button>
         <TextInput
           style={{ width: "8em" }}
           placeholder="Broadcast ID"
@@ -282,11 +310,10 @@ function App() {
       <Group>
         <Button
           disabled={isClipDisabled}
-          color={isClipDisabled ? "gray" : "grape"}
+          color={isClipDisabled ? "gray" : "purple"}
           onClick={handleCreateClip}
           loading={loadingClip}
           leftIcon={<IconBrandTwitch size={14} />}
-          variant={colorScheme === "dark" ? "outline" : "filled"}
         >
           Clip!
         </Button>
@@ -325,8 +352,6 @@ function App() {
       {!isLive && isLive !== null && (
         <Text>{settings.channelName} is not live.</Text>
       )}
-
-      <Text align="center">{userMsg}</Text>
 
       <Table data={clips} />
     </Stack>

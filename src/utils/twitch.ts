@@ -8,7 +8,7 @@ export type Clip = {
 
 export const authURL = (settings: Settings) => {
   const { clientId } = settings;
-  const url = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=http://localhost&scope=clips%3Aedit&response_type=token`;
+  const url = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=https://chand1012.github.io/caffeineClipper/&scope=clips%3Aedit&response_type=token`;
   return url;
 };
 

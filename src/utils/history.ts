@@ -17,13 +17,13 @@ export const loadHistory = async () => {
   const historyFile = `history.json`;
   try {
     const historyContent = await readTextFile(historyFile, { dir });
-    console.log("History file exists, loading it");
-    console.log(historyContent);
+    // console.log("History file exists, loading it");
+    // console.log(historyContent);
     const historyData = JSON.parse(historyContent);
     return historyData;
   } catch (e) {
     // doesn't exist, handle it
-    console.log("History file doesn't exist, creating it");
+    // console.log("History file doesn't exist, creating it");
     await createDir(appdata, { recursive: true });
     await writeTextFile(historyFile, JSON.stringify(history), { dir });
     return history;

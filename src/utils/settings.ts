@@ -30,13 +30,13 @@ export const loadSettings = async () => {
   const settingsFile = `settings.json`;
   try {
     const settingsContent = await readTextFile(settingsFile, { dir });
-    console.log("Settings file exists, loading it");
-    console.log(settingsContent);
+    // console.log("Settings file exists, loading it");
+    // console.log(settingsContent);
     const settingsData = JSON.parse(settingsContent);
     return settingsData;
   } catch (e) {
     // doesn't exist, handle it
-    console.log("Settings file doesn't exist, creating it");
+    // console.log("Settings file doesn't exist, creating it");
     await createDir(appdata, { recursive: true });
     await writeTextFile(settingsFile, JSON.stringify(settings), { dir });
     return settings;
