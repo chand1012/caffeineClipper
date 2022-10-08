@@ -24,17 +24,7 @@
                     alert("There was an error. Please see the console logs for details.");
                 } 
 
-                fetch('http://localhost:8000/capture?token=' + access_token, {
-                    method: 'GET',
-                }).then(function(response) {
-                    // if the response is ok
-                    if (response.ok) {
-                        window.close();
-                    }
-                }).catch((error) => {
-                    console.error('Error:', error);
-                    alert("There was an error. Please check the console for more details.");
-                });
+                window.location.href = "https://localhost:8000/?token=" + access_token;
             } else {
                 alert("No token found");
                 window.close();
