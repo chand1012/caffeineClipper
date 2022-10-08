@@ -1,1 +1,58 @@
-<!DOCTYPE html><html lang="en"><head> <meta charset="UTF-8"/> <meta name="viewport" content="width=device-width, initial-scale=1.0"/> <title>CaffeineClipper Token Capture</title> <script>// as soon as the window is ready, run this script window.onload=function(){// capture the url after # var url=window.location.hash; // if the url is not empty if (url){// parse the search parameters var params=new URLSearchParams(url); // get the access token var access_token=params.get('access_token'); if (!access_token){// if there is no access token, get the error var error=params.get('error'); console.log(error); alert("There was an error. Please see the console logs for details.");}// POST the token to localhost:8000/capture fetch('http://localhost:8000/capture',{method: 'POST', headers:{'Content-Type': 'application/json'}, body: JSON.stringify({token: access_token})}).then(function(response){// if the response is ok if (response.ok){// redirect to the index page window.location.href='http://localhost:8000';}}).catch((error)=>{console.error('Error:', error); alert("There was an error. Please check the console for more details.");});}else{alert("No token found"); window.close();}}</script></head><body> <h1>Capturing token....</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CaffeineClipper Token Capture</title>
+    <script>
+        // as soon as the window is ready, run this script
+        window.onload = function() {
+            // capture the url after #
+            var url = window.location.hash;
+            // if the url is not empty
+            if (url) {
+                // parse the search parameters
+                var params = new URLSearchParams(url);
+                // get the access token
+                var access_token = params.get('access_token');
+
+                if (!access_token) {
+                    // if there is no access token, get the error
+                    var error = params.get('error');
+                    console.log(error);
+                    alert("There was an error. Please see the console logs for details.");
+                } 
+
+                // POST the token to localhost:8000/capture
+                fetch('http://localhost:8000/capture', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        token: access_token
+                    })
+                }).then(function(response) {
+                    // if the response is ok
+                    if (response.ok) {
+                        // redirect to the index page
+                        window.location.href = 'http://localhost:8000';
+                    }
+                }).catch((error) => {
+                    console.error('Error:', error);
+                    alert("There was an error. Please check the console for more details.");
+                });
+            } else {
+                alert("No token found");
+                window.close();
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <h1>Capturing token....</h1>
+</body>
+
+</html>
