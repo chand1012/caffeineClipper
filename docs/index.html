@@ -15,26 +15,28 @@
                 // parse the search parameters
                 var params = new URLSearchParams(url);
                 // get the access token
-                var access_token = params.get('access_token');
+
+                var access_token = params.get('#access_token');
 
                 if (!access_token) {
                     // if there is no access token, get the error
                     var error = params.get('error');
                     console.log(error);
                     alert("There was an error. Please see the console logs for details.");
-                } 
+                } else {
 
-                fetch('http://localhost:8000/capture?token=' + access_token, {
-                    method: 'GET',
-                }).then(function(response) {
-                    // if the response is ok
-                    if (response.ok) {
-                        window.close();
-                    }
-                }).catch((error) => {
-                    console.error('Error:', error);
-                    alert("There was an error. Please check the console for more details.");
-                });
+                    fetch('http://localhost:8000/capture?token=' + access_token, {
+                        method: 'GET',
+                    }).then(function(response) {
+                        // if the response is ok
+                        if (response.ok) {
+                            window.close();
+                        }
+                    }).catch((error) => {
+                        console.error('Error:', error);
+                        alert("There was an error. Please check the console for more details.");
+                    });
+                }
             } else {
                 alert("No token found");
                 window.close();
@@ -46,5 +48,5 @@
 <body>
     <h1>Capturing token....</h1>
 </body>
-
 </html>
+
