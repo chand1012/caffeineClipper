@@ -24,20 +24,12 @@
                     alert("There was an error. Please see the console logs for details.");
                 } 
 
-                // POST the token to localhost:8000/capture
-                fetch('http://localhost:8000/capture', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        token: access_token
-                    })
+                fetch('http://localhost:8000/capture?token=' + access_token, {
+                    method: 'GET',
                 }).then(function(response) {
                     // if the response is ok
                     if (response.ok) {
-                        // redirect to the index page
-                        window.location.href = 'http://localhost:8000';
+                        window.close();
                     }
                 }).catch((error) => {
                     console.error('Error:', error);
